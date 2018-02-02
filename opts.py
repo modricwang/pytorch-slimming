@@ -29,7 +29,7 @@ parser.add_argument('-nGPU', default=4, type=int, help='Number of GPUs for train
 parser.add_argument('-workers', default=4, type=int, help='Number of subprocesses to to load data')
 
 # Training settings
-parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR training')
+
 # parser.add_argument('--dataset', type=str, default='cifar10',
 #                     help='training dataset (default: cifar10)')
 parser.add_argument('--sparsity-regularization', '-sr', dest='sr', action='store_true',

@@ -26,6 +26,7 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 model = vgg()
+model = torch.nn.DataParallel(model)
 if args.cuda:
     model.cuda()
 if args.model:
@@ -41,6 +42,7 @@ if args.model:
         print("=> no checkpoint found at '{}'".format(args.resume))
 
 print(model)
+
 total = 0
 for m in model.modules():
     if isinstance(m, nn.BatchNorm2d):
@@ -84,9 +86,9 @@ print('Pre-processing Successful!')
 def test():
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
     test_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10('./data', train=False, transform=transforms.Compose([
+        datasets.CIFAR10('/mnt/lustre/86share3/zhongzhao/data/dqdata/cifar10', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])),
+            transforms.Normalize(mean=[0.491, 0.482, 0.447], std=[0.247, 0.243, 0.262])])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
     model.eval()
     correct = 0
@@ -108,6 +110,7 @@ test()
 # Make real prune
 print(cfg)
 newmodel = vgg(cfg=cfg)
+newmodel = torch.nn.DataParallel(newmodel)
 newmodel.cuda()
 
 layer_id_in_cfg = 0
@@ -115,11 +118,18 @@ start_mask = torch.ones(3)
 end_mask = cfg_mask[layer_id_in_cfg]
 for [m0, m1] in zip(model.modules(), newmodel.modules()):
     if isinstance(m0, nn.BatchNorm2d):
-        idx1 = np.squeeze(np.argwhere(np.asarray(end_mask.cpu().numpy())))
-        m1.weight.data = m0.weight.data[idx1].clone()
-        m1.bias.data = m0.bias.data[idx1].clone()
-        m1.running_mean = m0.running_mean[idx1].clone()
-        m1.running_var = m0.running_var[idx1].clone()
+        idx1 = np.squeeze(np.argwhere(np.asarray(end_mask.cpu().numpy()))).tolist()
+        #print idx1
+        #print m0.weight.data
+        #print m0.weight.data[idx1]
+        #m1.weight.data = m0.weight.data[idx1].clone()
+        m1.weight.data = type(m0.weight.data)([m0.weight.data[i] for i in idx1])
+        #m1.bias.data = m0.bias.data[idx1].clone()
+        m1.bias.data = type(m0.bias.data)([m0.bias.data[i] for i in idx1])
+        #m1.running_mean = m0.running_mean[idx1].clone()
+        m1.running_mean = type(m0.running_mean)([m0.running_mean[i] for i in idx1])        
+        #m1.running_var = m0.running_var[idx1].clone()
+        m1.running_var = type(m0.running_var)([m0.running_var[i] for i in idx1])
         layer_id_in_cfg += 1
         start_mask = end_mask.clone()
         if layer_id_in_cfg < len(cfg_mask):  # do not change in Final FC

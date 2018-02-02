@@ -6,19 +6,22 @@ import math  # init
 
 class vgg(nn.Module):
 
-    def __init__(self, dataset='cifar10', init_weights=True, cfg=None):
+    def __init__(self, args, dataset='cifar10', init_weights=True, cfg=None):
         super(vgg, self).__init__()
         if cfg is None:
             cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512]
         self.feature = self.make_layers(cfg, True)
 
-        if dataset == 'cifar100':
-            num_classes = 100
-        elif dataset == 'cifar10':
-            num_classes = 10
-        self.classifier = nn.Linear(cfg[-1], num_classes)
-        if init_weights:
-            self._initialize_weights()
+        # if dataset == 'cifar100':
+        #     num_classes = 100
+        # elif dataset == 'cifar10':
+        #     num_classes = 10
+        # self.classifier = nn.Linear(cfg[-1], num_classes)
+        # if init_weights:
+        #     self._initialize_weights()
+
+        self.color_fc = nn.Linear(2048, args.color_classes)
+        self.type_fc = nn.Linear(2048, args.type_classes)
 
     def make_layers(self, cfg, batch_norm=False):
         layers = []
@@ -62,4 +65,3 @@ if __name__ == '__main__':
     x = Variable(torch.FloatTensor(16, 3, 40, 40))
     y = net(x)
     print(y.data.shape)
-
